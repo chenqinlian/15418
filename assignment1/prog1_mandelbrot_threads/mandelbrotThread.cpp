@@ -35,14 +35,14 @@ void* workerThreadStart(void* threadArgs) {
     // TODO: Implement worker thread here.
 
     double startTime = CycleTimer::currentSeconds();
-    printf("Hello world from thread %d\n", args->threadId);
+    //printf("Hello world from thread %d\n", args->threadId);
 
     mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, 
             args->width, args->height, args->threadId, args->height, 
             args->maxIterations, args->output, args->threadtoadd);
 
     double endTime = CycleTimer::currentSeconds();
-    printf("Thread %d takes %lf seconds.\n", args->threadId, endTime - startTime);
+    //printf("Thread %d takes %lf seconds.\n", args->threadId, endTime - startTime);
 
     return NULL;
 }
@@ -69,7 +69,7 @@ void mandelbrotThread(
     pthread_t workers[MAX_THREADS];
     WorkerArgs args[MAX_THREADS];
 
-    printf("numthread %d\n",numThreads);
+    //printf("numthread %d\n",numThreads);
 
     for (int i=0; i<numThreads; i++) {
         // TODO: Set thread arguments here.
