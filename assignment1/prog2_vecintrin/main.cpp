@@ -239,9 +239,52 @@ void clampedExpSerial(float* values, int* exponents, float* output, int N) {
 void clampedExpVector(float* values, int* exponents, float* output, int N) {
   // TODO: Implement your vectorized version of clampedExpSerial here
 
-  for (int i=0; i<N; i+=VECTOR_WIDTH) {
+    __cmu418_vec_float vecx, result, clampVec;
+    __cmu418_vec_int vecy, allZeros, allOnes;
+    __cmu418_mask boundaryMask, zeroMask, nonZeroMask, maskAll, clampMask;
+    int count = 0;
 
-  }
+    // VECTOR_WIDTH number of 1
+    maskAll = _cmu418_init_ones();
+    _cmu418_vset_int(allOnes, 1, maskAll);
+    _cmu418_vset_int(allZeros, 0, maskAll);
+    // VECTOR_WIDTH number of 9.999999f
+    _cmu418_vset_float(clampVec, 9.999999f, maskAll);
+    
+
+
+    for (int i=0; i<N; i+=VECTOR_WIDTH) {
+        boundaryMask = _cmu418_init_ones(N - i);
+        // load data
+        _cmu418_vload_float(vecx, values + i, boundaryMask);
+        _cmu418_vload_int(vecy, exponents + i, boundaryMask);
+        // find exponent = 0 in the vector
+        _cmu418_veq_int(zeroMask, vecy, allZeros, boundaryMask);
+        // if y == 0, set result to 1.f
+        _cmu418_vset_float(result, 1.f, zeroMask);
+        // else
+        nonZeroMask = _cmu418_mask_not(zeroMask);
+        nonZeroMask = _cmu418_mask_and(nonZeroMask, boundaryMask);
+        _cmu418_vmove_float(result, vecx, nonZeroMask);
+        // count = y - 1
+        _cmu418_vsub_int(vecy, vecy, allOnes, nonZeroMask);
+        // update nonZeroMask
+        _cmu418_vgt_int(nonZeroMask, vecy, allZeros, boundaryMask); 
+        // compute count
+        count = _cmu418_cntbits(nonZeroMask);
+        while (count > 0) {
+            _cmu418_vmult_float(result, result, vecx, nonZeroMask);
+            // exp -= 1
+            _cmu418_vsub_int(vecy, vecy, allOnes, nonZeroMask); 
+            // update nonZeroMask
+            _cmu418_vgt_int(nonZeroMask, vecy, allZeros, boundaryMask);
+            // count--
+            count = _cmu418_cntbits(nonZeroMask);
+        }
+        _cmu418_vgt_float(clampMask, result, clampVec, boundaryMask);
+        _cmu418_vset_float(result, 9.999999f, clampMask);
+        _cmu418_vstore_float(output + i, result, boundaryMask);
+    }
 
 }
 
@@ -259,10 +302,29 @@ float arraySumSerial(float* values, int N) {
 float arraySumVector(float* values, int N) {
   // TODO: Implement your vectorized version of arraySumSerial here
 
-  for (int i=0; i<N; i+=VECTOR_WIDTH) {
+    float sum = 0;
+    int iter = 0;
+    int width = VECTOR_WIDTH;
+    while (width != 1) {
+        ++iter;
+        width /= 2;
+    }
 
+    __cmu418_mask maskAll = _cmu418_init_ones();
+    __cmu418_vec_float vecValue;
+
+    for (int i=0; i<N; i+=VECTOR_WIDTH) {
+        _cmu418_vload_float(vecValue, values + i, maskAll);
+        for (int j = 0; j < iter - 1; ++j) {  // it is iter - 1
+            _cmu418_hadd_float(vecValue, vecValue);
+            _cmu418_interleave_float(vecValue, vecValue);
+        }
+        // by moving this out, we save one instruction:
+        //      _cmu418_interleave_float(vecResult, vecValue);
+        _cmu418_hadd_float(vecValue, vecValue);
+        sum += vecValue.value[0];
   }
 
-  return 0.0;
+  return sum;
 }
 
