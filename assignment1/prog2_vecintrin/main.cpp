@@ -244,41 +244,35 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
     __cmu418_mask boundaryMask, zeroMask, nonZeroMask, maskAll, clampMask;
     int count = 0;
 
-    // VECTOR_WIDTH number of 1
+
     maskAll = _cmu418_init_ones();
     _cmu418_vset_int(allOnes, 1, maskAll);
     _cmu418_vset_int(allZeros, 0, maskAll);
-    // VECTOR_WIDTH number of 9.999999f
     _cmu418_vset_float(clampVec, 9.999999f, maskAll);
     
 
 
     for (int i=0; i<N; i+=VECTOR_WIDTH) {
         boundaryMask = _cmu418_init_ones(N - i);
-        // load data
         _cmu418_vload_float(vecx, values + i, boundaryMask);
         _cmu418_vload_int(vecy, exponents + i, boundaryMask);
-        // find exponent = 0 in the vector
         _cmu418_veq_int(zeroMask, vecy, allZeros, boundaryMask);
-        // if y == 0, set result to 1.f
+
+	//element y in vecy==0
         _cmu418_vset_float(result, 1.f, zeroMask);
         // else
         nonZeroMask = _cmu418_mask_not(zeroMask);
         nonZeroMask = _cmu418_mask_and(nonZeroMask, boundaryMask);
         _cmu418_vmove_float(result, vecx, nonZeroMask);
-        // count = y - 1
+
         _cmu418_vsub_int(vecy, vecy, allOnes, nonZeroMask);
-        // update nonZeroMask
         _cmu418_vgt_int(nonZeroMask, vecy, allZeros, boundaryMask); 
-        // compute count
         count = _cmu418_cntbits(nonZeroMask);
+
         while (count > 0) {
             _cmu418_vmult_float(result, result, vecx, nonZeroMask);
-            // exp -= 1
             _cmu418_vsub_int(vecy, vecy, allOnes, nonZeroMask); 
-            // update nonZeroMask
             _cmu418_vgt_int(nonZeroMask, vecy, allZeros, boundaryMask);
-            // count--
             count = _cmu418_cntbits(nonZeroMask);
         }
         _cmu418_vgt_float(clampMask, result, clampVec, boundaryMask);
@@ -303,10 +297,10 @@ float arraySumVector(float* values, int N) {
   // TODO: Implement your vectorized version of arraySumSerial here
 
     float sum = 0;
-    int iter = 0;
+    int iterNum = 0;
     int width = VECTOR_WIDTH;
     while (width != 1) {
-        ++iter;
+        iterNum++;
         width /= 2;
     }
 
@@ -315,12 +309,10 @@ float arraySumVector(float* values, int N) {
 
     for (int i=0; i<N; i+=VECTOR_WIDTH) {
         _cmu418_vload_float(vecValue, values + i, maskAll);
-        for (int j = 0; j < iter - 1; ++j) {  // it is iter - 1
+        for (int j = 0; j < iterNum - 1; j++) { 
             _cmu418_hadd_float(vecValue, vecValue);
             _cmu418_interleave_float(vecValue, vecValue);
         }
-        // by moving this out, we save one instruction:
-        //      _cmu418_interleave_float(vecResult, vecValue);
         _cmu418_hadd_float(vecValue, vecValue);
         sum += vecValue.value[0];
   }
