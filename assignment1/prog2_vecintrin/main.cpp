@@ -53,8 +53,6 @@ int main(int argc, char * argv[]) {
     }
   }
 
-  VECTOR_WIDTH=2
-
   float* values = new float[N+VECTOR_WIDTH];
   int* exponents = new int[N+VECTOR_WIDTH];
   float* output = new float[N+VECTOR_WIDTH];
