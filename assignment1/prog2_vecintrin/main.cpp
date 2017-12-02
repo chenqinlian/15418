@@ -53,6 +53,7 @@ int main(int argc, char * argv[]) {
     }
   }
 
+  VECTOR_WIDTH=2
 
   float* values = new float[N+VECTOR_WIDTH];
   int* exponents = new int[N+VECTOR_WIDTH];
@@ -241,7 +242,7 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
 
     __cmu418_vec_float vecx, result, clampVec;
     __cmu418_vec_int vecy, allZeros, allOnes;
-    __cmu418_mask boundaryMask, zeroMask, nonZeroMask, maskAll, clampMask;
+    __cmu418_mask BoundMask, zeroMask, nonZeroMask, maskAll, clampMask;
     int count = 0;
 
 
@@ -253,31 +254,31 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
 
 
     for (int i=0; i<N; i+=VECTOR_WIDTH) {
-        boundaryMask = _cmu418_init_ones(N - i);
-        _cmu418_vload_float(vecx, values + i, boundaryMask);
-        _cmu418_vload_int(vecy, exponents + i, boundaryMask);
-        _cmu418_veq_int(zeroMask, vecy, allZeros, boundaryMask);
+        BoundMask = _cmu418_init_ones(N - i);
+        _cmu418_vload_float(vecx, values + i, BoundMask);
+        _cmu418_vload_int(vecy, exponents + i, BoundMask);
+        _cmu418_veq_int(zeroMask, vecy, allZeros, BoundMask);
 
 	//element y in vecy==0
         _cmu418_vset_float(result, 1.f, zeroMask);
         // else
         nonZeroMask = _cmu418_mask_not(zeroMask);
-        nonZeroMask = _cmu418_mask_and(nonZeroMask, boundaryMask);
+        nonZeroMask = _cmu418_mask_and(nonZeroMask, BoundMask);
         _cmu418_vmove_float(result, vecx, nonZeroMask);
 
         _cmu418_vsub_int(vecy, vecy, allOnes, nonZeroMask);
-        _cmu418_vgt_int(nonZeroMask, vecy, allZeros, boundaryMask); 
+        _cmu418_vgt_int(nonZeroMask, vecy, allZeros, BoundMask); 
         count = _cmu418_cntbits(nonZeroMask);
 
         while (count > 0) {
             _cmu418_vmult_float(result, result, vecx, nonZeroMask);
             _cmu418_vsub_int(vecy, vecy, allOnes, nonZeroMask); 
-            _cmu418_vgt_int(nonZeroMask, vecy, allZeros, boundaryMask);
+            _cmu418_vgt_int(nonZeroMask, vecy, allZeros, BoundMask);
             count = _cmu418_cntbits(nonZeroMask);
         }
-        _cmu418_vgt_float(clampMask, result, clampVec, boundaryMask);
+        _cmu418_vgt_float(clampMask, result, clampVec, BoundMask);
         _cmu418_vset_float(result, 9.999999f, clampMask);
-        _cmu418_vstore_float(output + i, result, boundaryMask);
+        _cmu418_vstore_float(output + i, result, BoundMask);
     }
 
 }
